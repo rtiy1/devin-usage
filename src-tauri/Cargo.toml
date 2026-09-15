@@ -1,0 +1,22 @@
+[package]
+name = "devin-usage"
+version = "0.1.0"
+description = "Devin CLI usage monitor"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+base64 = "0.22"
+chrono = "0.4"
+
+[profile.release]
+panic = "abort"
+lto = true
+codegen-units = 1
+strip = true
