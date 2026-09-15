@@ -1,8 +1,13 @@
-const invoke = window.__TAURI__.core.invoke;
-const $ = (id) => document.getElementById(id);
+// works in Tauri (window.__TAURI__) and in a plain browser (dev server /api/stats)
+const getStats = window.__TAURI__
+  ? () => window.__TAURI__.core.invoke("stats")
+  : () => fetch("/api/stats").then((r) => r.json());
 
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmt = (n) => Math.round(n).toLocaleString("en-US");
 const fmtS = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "K" : String(Math.round(n)));
+const dateStr = (ms) => new Date(ms).toLocaleDateString("sv");
 
 function countdown(ms) {
   if (!ms) return "?";
@@ -14,90 +19,96 @@ function countdown(ms) {
   if (h > 0) return `${h} 时 ${m} 分`;
   return `${m} 分`;
 }
-const dateStr = (ms) => new Date(ms).toLocaleDateString("sv");
 
 function quotaCard(title, usedPct, resetAt) {
-  const cls = usedPct >= 90 ? "fill-bad" : usedPct >= 70 ? "fill-warn" : "fill-ok";
-  return `<div class="card"><div class="v">${usedPct}%</div>
-    <div class="l">${title}已用</div>
-    <div class="qbar"><div class="${cls}" style="width:${Math.min(100, usedPct)}%"></div></div>
-    <div class="sub">${countdown(resetAt)}后重置</div></div>`;
+  const cls = usedPct >= 90 ? "bad" : usedPct >= 70 ? "warn" : "";
+  return `<div class="card">
+    <div class="v">${usedPct}<small>%</small></div>
+    <div class="l">${title} · 已用</div>
+    <div class="qtrack"><div class="qfill ${cls}" style="width:${Math.min(100, usedPct)}%"></div></div>
+    <div class="sub">剩 <b>${100 - usedPct}%</b> · ${countdown(resetAt)}后重置</div>
+  </div>`;
 }
 
-function card(v, l, sub = "") {
+function statCard(v, l, sub = "") {
   return `<div class="card"><div class="v">${v}</div><div class="l">${l}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
 }
 
-function table(list, keyOf, extra = () => "") {
-  if (!list.length) return '<div class="dim">无数据</div>';
+function table(list, keyOf, extra = "") {
+  if (!list.length) return '<div class="dim" style="padding:8px 4px">无数据</div>';
   const max = Math.max(...list.map((r) => r.total), 1);
   const rows = list
     .map(
       (r) => `<tr>
-      <td class="name">${esc(keyOf(r))}</td>
+      <td class="name" title="${esc(keyOf(r))}">${esc(keyOf(r))}</td>
       <td class="num">${fmt(r.requests)}</td>
       <td class="num">${fmtS(r.input)}</td>
       <td class="num">${fmtS(r.cacheRead)}</td>
       <td class="num">${fmtS(r.output)}</td>
       <td class="num"><b>${fmt(r.total)}</b></td>
-      <td class="barcell"><div class="tbar" style="width:${Math.round((r.total / max) * 100)}%"></div></td>
-      ${extra(r)}</tr>`
+      <td style="width:110px"><div class="mbar" style="width:${Math.round((r.total / max) * 100)}%"></div></td>
+    </tr>`
     )
     .join("");
-  return `<table><tr><th></th><th class="num">请求</th><th class="num">输入</th><th class="num">缓存</th><th class="num">输出</th><th class="num">合计</th><th></th></tr>${rows}</table>`;
+  return `<table><thead><tr><th></th><th class="num">请求</th><th class="num">输入</th><th class="num">缓存</th><th class="num">输出</th><th class="num">合计</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 let last = null;
 async function refresh() {
   try {
-    last = await invoke("stats");
+    last = await getStats();
+    $("err").hidden = true;
+    $("liveDot").classList.remove("off");
+    render();
   } catch (e) {
-    $("meta").textContent = "读取失败: " + e;
-    return;
+    $("liveDot").classList.add("off");
+    const el = $("err");
+    el.hidden = false;
+    el.textContent = "读取失败：" + e;
   }
-  render();
 }
 
 function render() {
   const d = last;
   const q = d.quota;
-  $("meta").textContent =
-    `${new Date().toLocaleTimeString("zh-CN", { hour12: false })} · ${d.sessionCount} 个会话` +
-    (q ? ` · 配额缓存 ${new Date(q.fetchedAt).toLocaleTimeString("zh-CN", { hour12: false })}` : "");
+  $("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+  $("planBadge").textContent = q ? `${q.plan} · ${q.user}${q.live ? " · 实时" : " · 缓存"}` : "";
 
   $("quota").innerHTML = q
-    ? `<div class="cards">` +
-      quotaCard("今日配额", 100 - q.dailyRemainingPct, q.dailyResetAt) +
+    ? quotaCard("今日配额", 100 - q.dailyRemainingPct, q.dailyResetAt) +
       quotaCard("本周配额", 100 - q.weeklyRemainingPct, q.weeklyResetAt) +
-      card(`${esc(q.plan)}`, `套餐 · ${esc(q.user)}`, `账期 ${dateStr(q.planStart)} → ${dateStr(q.planEnd)}`) +
-      `</div>`
-    : `<div class="cards">${card("—", "配额数据", "Devin 运行后自动出现")}</div>`;
+      statCard(dateStr(q.planEnd), "账期结束", `${dateStr(q.planStart)} 开始 · 剩 ${countdown(q.planEnd)}`)
+    : statCard("—", "配额", "Devin 运行后自动出现");
 
   $("totals").innerHTML =
-    `<div class="cards">` +
-    card(fmt(d.today.total), "今天 tokens", `${d.today.requests} req`) +
-    card(fmt(d.week.total), "本周 tokens", `${d.week.requests} req`) +
-    card(fmt(d.all.total), "全部 tokens", `${d.all.requests} req`) +
-    card(fmtS(d.all.input), "全价输入", `缓存 ${fmtS(d.all.cacheRead)} · 输出 ${fmtS(d.all.output)}`) +
+    statCard(fmtS(d.today.total), "今天", `${d.today.requests} 次请求`) +
+    statCard(fmtS(d.week.total), "本周", `${d.week.requests} 次请求`) +
+    statCard(fmtS(d.all.total), "总计", `${d.sessionCount} 个会话`) +
+    statCard(fmtS(d.all.output), "输出 tokens", `输入 ${fmtS(d.all.input)} · 缓存 ${fmtS(d.all.cacheRead)}`);
+
+  // last-14-days bar chart
+  const days = d.byDay.slice(-14);
+  const todayStr = new Date().toLocaleDateString("sv");
+  const max = Math.max(...days.map((x) => x.total), 1);
+  $("chart").innerHTML =
+    `<div class="chart">` +
+    days
+      .map(
+        (x) => `<div class="col" title="${x.day} · ${fmt(x.total)} tokens · ${x.requests} 请求">
+        <div class="bar${x.day === todayStr ? " today" : ""}" style="height:${Math.max(3, Math.round((x.total / max) * 100))}%"></div>
+        <div class="d">${x.day.slice(5)}</div></div>`
+      )
+      .join("") +
     `</div>`;
 
   $("models").innerHTML = table(d.todayByModel, (r) => r.model);
-  $("days").innerHTML = table(d.byDay.slice(-14), (r) => r.day);
   $("sessions").innerHTML = table(
-    d.bySession.slice(0, 12),
-    (r) => `${r.session}  ${r.title ?? ""}`,
-    (r) => `<td class="num dim">${r.createdAt ? dateStr(r.createdAt) : ""}</td>`
+    d.bySession.slice(0, 10),
+    (r) => `${r.session} · ${r.title ?? ""}`
   );
-  $("foot").textContent = d.dbPath;
+  $("foot").textContent = `${d.dbPath}`;
 }
 
-$("autofresh").addEventListener("change", (e) => {
-  clearInterval(timer);
-  if (e.target.checked) timer = setInterval(refresh, 2000);
-});
-
-let timer = setInterval(refresh, 2000);
 refresh();
-setInterval(() => last && render(), 30_000); // keep countdowns fresh even if data unchanged
+setInterval(refresh, 2000);
+setInterval(() => last && render(), 30_000); // countdowns stay fresh

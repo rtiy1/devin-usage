@@ -7,25 +7,40 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Devin 用量</h1>
-    <div class="meta" id="meta">加载中…</div>
-    <label class="toggle"><input type="checkbox" id="autofresh" checked /> 实时刷新</label>
-  </header>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="14" width="4" height="7" rx="1" fill="#1f6feb"/><rect x="10" y="9" width="4" height="12" rx="1" fill="#388bfd"/><rect x="17" y="4" width="4" height="17" rx="1" fill="#58a6ff"/></svg>
+        <h1>Devin 用量</h1>
+      </div>
+      <div class="head-right">
+        <span class="live-dot" id="liveDot"></span>
+        <span id="clock" class="dim"></span>
+        <span id="planBadge" class="badge"></span>
+      </div>
+    </header>
 
-  <section id="quota"></section>
-  <section id="totals"></section>
+    <div id="err" class="err" hidden></div>
 
-  <h2>模型 · 今天</h2>
-  <section id="models"></section>
+    <section id="quota" class="grid quota"></section>
+    <section id="totals" class="grid stats"></section>
 
-  <h2>按天</h2>
-  <section id="days"></section>
+    <h2>最近 14 天</h2>
+    <section id="chart" class="panel"></section>
 
-  <h2>会话</h2>
-  <section id="sessions"></section>
+    <div class="cols">
+      <div>
+        <h2>模型 · 今天</h2>
+        <section id="models" class="panel"></section>
+      </div>
+      <div>
+        <h2>会话</h2>
+        <section id="sessions" class="panel"></section>
+      </div>
+    </div>
 
-  <footer id="foot"></footer>
+    <footer id="foot"></footer>
+  </div>
   <script src="main.js"></script>
 </body>
 </html>
