@@ -350,7 +350,7 @@ fn resolve_token_cached() -> Option<(String, &'static str)> {
 }
 
 // PKCE helpers — same flow as `devin auth login`
-// default mode: loopback listener on 127.0.0.1 + redirect_uri (auto-capture, like Antigravity-Manager)
+// default mode: loopback listener on 127.0.0.1 + redirect_uri (auto-capture)
 // manual mode (--force-manual-token-flow equivalent): no redirect_uri, page shows a code to paste
 struct PendingAuth {
     verifier: String,
@@ -478,7 +478,7 @@ fn auth_start(manual: Option<bool>) -> Result<Value, String> {
 }
 
 // exchange a PKCE code for a session token + persist as an account
-// (request shapes verified against devin.exe strings + CLIProxyAPI's devin_auth.go)
+// (request shapes verified against the official Devin CLI binary)
 fn exchange_pkce(code: &str, verifier: &str) -> Result<Value, String> {
     let token = (|| -> Result<String, String> {
         // primary: POST api.devin.ai/auth/cli/token {"code","code_verifier"} -> {"token"}
