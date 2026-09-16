@@ -1,4 +1,16 @@
 // works in Tauri (window.__TAURI__) and in a plain browser (dev server /api/*)
+// surface any uncaught failure immediately — the app must never die silently
+window.onerror = (m, s, l, c, e) => {
+  try {
+    const el = document.getElementById("err");
+    if (el) { el.hidden = false; el.textContent = "JS 错误: " + (e?.message ?? m) + " @" + (s || "").split("/").pop() + ":" + l; }
+    document.title = "JSERR " + (e?.message ?? m);
+  } catch (_) {}
+};
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} },
+};
 const isTauri = !!window.__TAURI__;
 const getStats = isTauri
   ? () => window.__TAURI__.core.invoke("stats")
@@ -85,11 +97,11 @@ const THEME_ICONS = {
 function applyTheme(t) {
   document.documentElement.dataset.theme = t;
   $("themeBtn").innerHTML = THEME_ICONS[t === "light" ? "dark" : "light"];
-  localStorage.setItem("du-theme", t);
+  store.set("du-theme", t);
 }
 $("themeBtn").onclick = () =>
   applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
-applyTheme(location.hash.includes("light") ? "light" : localStorage.getItem("du-theme") || "dark");
+applyTheme(location.hash.includes("light") ? "light" : store.get("du-theme") || "dark");
 
 // ==================== tabs ====================
 let activeTab = "dash";
@@ -110,7 +122,6 @@ function showErr(e) {
   el.hidden = false;
   el.textContent = "读取失败：" + (e?.message ?? e);
 }
-window.onerror = (m) => showErr(m);
 async function refresh() {
   try {
     last = await Promise.race([

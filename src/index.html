@@ -82,6 +82,19 @@
     </section>
   </div>
 
+  <script>
+    // boot diagnostics: surface any script-load or runtime failure in title + #err
+    window.addEventListener("error", function (e) {
+      var m = e.message || (e.target && (e.target.src || e.target.href) ? "load fail: " + (e.target.src || e.target.href) : "unknown");
+      document.title = "JSERR " + m;
+      var el = document.getElementById("err");
+      if (el) { el.hidden = false; el.textContent = "JSERR " + m; }
+    }, true);
+    window.addEventListener("unhandledrejection", function (e) {
+      var el = document.getElementById("err");
+      if (el) { el.hidden = false; el.textContent = "JSERR promise: " + (e.reason && e.reason.message || e.reason); }
+    });
+  </script>
   <script src="main.js"></script>
 </body>
 </html>
