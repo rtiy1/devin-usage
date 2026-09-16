@@ -126,8 +126,7 @@ h2 .tag-local { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radi
 .grid { display: grid; gap: 10px; }
 .grid.quota { grid-template-columns: 1fr; }
 .grid.stats { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 12px; }
-.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; align-items: start; }
-@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+
 
 .panel, .card {
   background: var(--panel);
