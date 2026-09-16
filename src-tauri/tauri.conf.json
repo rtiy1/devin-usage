@@ -12,10 +12,11 @@
       {
         "label": "main",
         "title": "Devin 用量",
-        "width": 860,
-        "height": 720,
-        "minWidth": 680,
-        "minHeight": 560,
+        "width": 980,
+        "height": 700,
+        "minWidth": 860,
+        "minHeight": 600,
+        "center": true,
         "resizable": true
       }
     ],
