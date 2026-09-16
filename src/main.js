@@ -1,3 +1,4 @@
+;(() => {
 // works in Tauri (window.__TAURI__) and in a plain browser (dev server /api/*)
 // surface any uncaught failure immediately — the app must never die silently
 window.onerror = (m, s, l, c, e) => {
@@ -11,14 +12,14 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} },
 };
-const isTauri = !!window.__TAURI__;
-const getStats = isTauri
+const tauriEnv = !!window.__TAURI__;
+const getStats = tauriEnv
   ? () => window.__TAURI__.core.invoke("stats")
   : () => fetch("/api/stats").then((r) => r.json());
 // tauri command name -> dev-server endpoint (where they differ from a simple _ -> / map)
 const API_PATH = { auth_sync_devin: "auth/sync_devin" };
 const api = (cmd, args) =>
-  isTauri
+  tauriEnv
     ? window.__TAURI__.core.invoke(cmd, args ?? {})
     : fetch("/api/" + (API_PATH[cmd] ?? cmd.replaceAll("_", "/")), args
         ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(args) }
@@ -303,7 +304,7 @@ $("addAcct").onclick = async () => {
     $("loginHint").textContent = r.manual
       ? "登录完成后，把页面显示的代码粘贴到下面。"
       : "在浏览器里完成登录即可自动添加。若浏览器没有自动打开，点上面的链接；也可以手动粘贴代码。";
-    if (isTauri) {
+    if (tauriEnv) {
       try { await api("open_url", { url: r.url }); } catch {}
     } else {
       window.open(r.url, "_blank");
@@ -361,3 +362,5 @@ refresh();
 setInterval(refresh, 2000);
 setInterval(() => last && render(), 30_000); // countdowns stay fresh
 if (location.hash === "#accts") document.querySelector('[data-tab="accts"]').click();
+
+})();
