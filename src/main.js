@@ -105,17 +105,24 @@ document.querySelectorAll(".tab").forEach((t) => {
 
 // ==================== dashboard ====================
 let last = null;
+function showErr(e) {
+  const el = $("err");
+  el.hidden = false;
+  el.textContent = "读取失败：" + (e?.message ?? e);
+}
+window.onerror = (m) => showErr(m);
 async function refresh() {
   try {
-    last = await getStats();
+    last = await Promise.race([
+      getStats(),
+      new Promise((_, rj) => setTimeout(() => rj(new Error("后端无响应 (invoke timeout)")), 8000)),
+    ]);
     $("err").hidden = true;
     $("liveDot").classList.remove("off");
     render();
   } catch (e) {
     $("liveDot").classList.add("off");
-    const el = $("err");
-    el.hidden = false;
-    el.textContent = "读取失败：" + e;
+    showErr(e);
   }
 }
 
@@ -141,7 +148,7 @@ function render() {
   const show = (...ids) => ids.forEach((id) => ($(id).hidden = false));
   $("online").hidden = !o;
   if (o) {
-    show("onlineModels", "onlineModelsTitle", "onlineTools", "onlineToolsTitle");
+    show("onlineModels", "onlineModelsTitle");
     $("online").innerHTML =
       statCard(o.acuUsed.toFixed(2), "ACU 已用（30 天）", `${o.messagesSent} 条消息 · ${o.conversations} 个会话`, IC.gauge, "ic-cyan") +
       statCard(fmt(o.messagesSent), "消息发送（30 天）", "云端接口实时", IC.msg, "ic-blue") +
@@ -157,13 +164,6 @@ function render() {
         <td style="width:110px"><div class="mbar" style="width:${Math.round((m.messages / mmax) * 100)}%"></div></td>
       </tr>`).join("") + `</tbody></table>`;
 
-    const tmax = Math.max(...o.tools.map((t) => t.count), 1);
-    $("onlineTools").innerHTML = `<table><tbody>` +
-      o.tools.slice(0, 10).map((t) => `<tr>
-        <td class="name">${esc(t.tool)}</td>
-        <td class="num"><b>${fmt(t.count)}</b></td>
-        <td style="width:110px"><div class="mbar" style="width:${Math.round((t.count / tmax) * 100)}%"></div></td>
-      </tr>`).join("") + `</tbody></table>`;
   }
 
   $("totals").innerHTML =
